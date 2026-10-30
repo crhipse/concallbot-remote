@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10212e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Concall Control</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, sans-serif; background:#0b1720; color:#edf4f3 }
+    * { box-sizing:border-box }
+    body { margin:0; min-height:100vh; background:linear-gradient(160deg,#10212e,#09141a 70%); padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom) }
+    main { max-width:640px; margin:auto; padding:32px 0 80px }
+    h1 { font-size:1.9rem; margin:.3rem 0 }
+    h2 { font-size:1.15rem; margin:0 0 16px }
+    p { line-height:1.55; color:#b2c4c7 }
+    .eyebrow { color:#72dbc2; font-weight:700; font-size:.82rem; letter-spacing:.12em; text-transform:uppercase }
+    .panel { background:#172b37; border:1px solid #31505b; border-radius:18px; padding:20px; margin-top:20px; box-shadow:0 12px 30px #0002 }
+    label { display:block; font-size:.93rem; font-weight:650; margin:0 0 8px }
+    input,select { width:100%; min-height:48px; border-radius:11px; border:1px solid #4d6c75; background:#0e202a; color:#fff; padding:0 13px; font:inherit }
+    select { margin-bottom:14px }
+    input { margin-bottom:16px }
+    button,.action { display:block; width:100%; min-height:48px; border:0; border-radius:11px; font:inherit; font-weight:750; cursor:pointer; text-align:center; text-decoration:none; padding:12px; background:#79dec3; color:#09221c }
+    button.secondary { margin-top:10px; background:#294a58; color:#e8f4f1; border:1px solid #5c8190 }
+    button.tertiary { width:auto; min-height:36px; padding:7px 12px; background:#294a58; color:#e8f4f1; font-size:.87rem }
+    button:disabled { opacity:.55; cursor:not-allowed }
+    small { display:block; margin-top:10px; color:#a6b9bd; line-height:1.45 }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:10px }
+    .status { color:#a9e5d3; font-size:.88rem }
+    .card { display:block; border-top:1px solid #35515b; padding:14px 0; color:inherit; text-decoration:none }
+    .card strong { display:block; margin-bottom:5px }
+    .card span { color:#a6b9bd; font-size:.88rem }
+    .notice { font-size:.92rem }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Concall Control</div>
+  <h1>집 PC 작업 요청</h1>
+  <p>회사별 컨콜과 KPI 작업을 요청하고 진행 상황을 확인합니다.</p>
+  <section class="panel" aria-labelledby="request-title">
+    <h2 id="request-title">새 작업</h2>
+    <label for="company">회사명 또는 티커</label>
+    <input id="company" maxlength="80" autocomplete="off" placeholder="예: MSFT">
+    <label for="mode">컨콜 범위</label>
+    <select id="mode"><option value="single">선택한 콜 1개</option><option value="four">최근 콜 4개</option></select>
+    <button id="concall">컨콜 요청</button>
+    <button class="secondary" id="kpi" disabled>KPI 엑셀 요청 · 준비 중</button>
+    <small>버튼을 누르면 GitHub 작성 화면이 열립니다. 로그인 후 제출을 눌러야 요청이 접수됩니다.</small>
+  </section>
+  <section class="panel" aria-labelledby="status-title">
+    <div class="row"><h2 id="status-title">작업 현황</h2><button id="refresh" class="tertiary">새로고침</button></div>
+    <div id="connection" class="status" role="status">연결 확인 중</div>
+    <div id="cards"></div>
+    <small>상태는 약 3분마다 갱신됩니다. 집 PC가 꺼져 있으면 요청은 대기합니다.</small>
+  </section>
+</main>
+<script>
+// Publish this file only after replacing this proposed relay repository name.
+const RELAY_REPO = 'crhipse/concallbot-remote';
+const ALLOWED_USER_ID = 309101588;
+const MARKER = 'concall-control:v1';
+const company = document.getElementById('company');
+const cards = document.getElementById('cards');
+const connection = document.getElementById('connection');
+
+function request(action) {
+  const query = company.value.trim();
+  if (!query || query.length > 80 || !/^[\p{L}\p{N}_ .,&()/-]+$/u.test(query)) {
+    company.setCustomValidity('회사명 또는 티커를 80자 이내로 입력하세요.');
+    company.reportValidity();
+    return;
+  }
+  company.setCustomValidity('');
+  const lines = [MARKER, `action: ${action}`, `query: ${query}`];
+  if (action === 'lookup') lines.push(`mode: ${document.getElementById('mode').value}`);
+  const title = action === 'lookup' ? `컨콜 · ${query}` : `KPI · ${query}`;
+  const url = new URL(`https://github.com/${RELAY_REPO}/issues/new`);
+  url.searchParams.set('title', title);
+  url.searchParams.set('body', lines.join('\n'));
+  location.href = url.href;
+}
+
+function textCard(issue) {
+  const a = document.createElement('a');
+  a.className = 'card';
+  a.href = issue.html_url;
+  a.rel = 'noopener noreferrer';
+  const strong = document.createElement('strong');
+  strong.textContent = issue.title;
+  const detail = document.createElement('span');
+  detail.textContent = `#${issue.number} · ${issue.state === 'closed' ? '종료' : '진행 중'} · ${new Date(issue.updated_at).toLocaleString('ko-KR')}`;
+  a.append(strong, detail);
+  return a;
+}
+
+async function refresh() {
+  connection.textContent = 'GitHub 현황 확인 중';
+  try {
+    const url = `https://api.github.com/repos/${RELAY_REPO}/issues?state=all&sort=updated&direction=desc&per_page=50`;
+    const response = await fetch(url, {headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
+    if (!response.ok) throw new Error(`GitHub 응답 ${response.status}`);
+    const issues = await response.json();
+    cards.replaceChildren(...issues.filter(x => !x.pull_request && x.user?.id === ALLOWED_USER_ID && typeof x.body === 'string' && x.body.startsWith(MARKER + '\n')).slice(0, 20).map(textCard));
+    if (!cards.children.length) cards.textContent = '표시할 요청이 없습니다.';
+    connection.textContent = `업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+  } catch (error) {
+    connection.textContent = `현황을 불러오지 못했습니다. ${error.message}`;
+  }
+}
+
+document.getElementById('concall').addEventListener('click', () => request('lookup'));
+document.getElementById('kpi').addEventListener('click', () => request('kpi_start'));
+document.getElementById('refresh').addEventListener('click', refresh);
+company.addEventListener('input', () => company.setCustomValidity(''));
+refresh();
+setInterval(refresh, 180000);
+</script>
+</body>
+</html>
