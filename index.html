@@ -33,28 +33,45 @@
     :focus-visible { outline:3px solid #1165b5; outline-offset:2px }
     @media (max-width:420px) { main { padding-top:22px } .panel { padding:16px } h1 { font-size:1.65rem } }
     .notice { font-size:.92rem }
+    details { border-top:1px solid #d2e2da; padding-top:16px; margin-top:18px }
+    summary { cursor:pointer; font-weight:750; color:#19543d; padding:4px 0 }
+    .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; margin-top:16px }
+    .settings-grid label { grid-column:1 / -1; margin-top:8px }
+    .settings-grid select { min-width:0 }
+    .settings-grid .stage-label { grid-column:1 / -1; margin-top:8px; font-weight:650; font-size:.9rem }
+    @media (max-width:420px) { .settings-grid { grid-template-columns:1fr } }
   </style>
 </head>
 <body>
 <main>
   <div class="eyebrow">Concall Control</div>
-  <h1>집 PC 작업 요청</h1>
-  <p>회사별 컨콜과 KPI 작업을 요청하고 진행 상황을 확인합니다.</p>
+  <h1>�� PC �۾� ��û</h1>
+  <p>ȸ�纰 ���ݰ� KPI �۾��� ��û�ϰ� ���� ��Ȳ�� Ȯ���մϴ�.</p>
   <section class="panel" aria-labelledby="request-title">
-    <h2 id="request-title">새 작업</h2>
-    <label for="company">회사명 또는 티커</label>
-    <input id="company" maxlength="80" autocomplete="off" placeholder="예: MSFT">
-    <label for="mode">컨콜 범위</label>
-    <select id="mode"><option value="single">선택한 콜 1개</option><option value="four">최근 콜 4개</option></select>
-    <button id="concall">컨콜 요청</button>
-    <button class="secondary" id="kpi" disabled>KPI 엑셀 요청 · 준비 중</button>
-    <small>버튼을 누르면 GitHub 작성 화면이 열립니다. 로그인 후 제출을 눌러야 요청이 접수됩니다.</small>
+    <h2 id="request-title">�� �۾�</h2>
+    <label for="company">ȸ��� �Ǵ� ƼĿ</label>
+    <input id="company" maxlength="80" autocomplete="off" placeholder="��: MSFT">
+    <label for="mode">���� ����</label>
+    <select id="mode"><option value="single">������ �� 1��</option><option value="four">�ֱ� �� 4��</option></select>
+    <button id="concall">���� ��û</button>
+    <button class="secondary" id="kpi" disabled>KPI ���� ��û �� �غ� ��</button>
+    <small>��ư�� ������ GitHub �ۼ� ȭ���� �����ϴ�. �α��� �� ������ ������ ��û�� �����˴ϴ�.</small>
+    <small>ȸ����� �۾� ���´� ���� �̽��� ǥ�õ˴ϴ�. �̸���, ��ȭ��ȣ, ��й�ȣ, ��ū, PC ��δ� �Է����� ������.</small>
+    <details id="settings">
+      <summary>�� ����</summary>
+      <label for="workflow">�۾�</label>
+      <select id="workflow"><option value="concall">����</option><option value="kpi">KPI ����</option></select>
+      <label for="provider">������</label>
+      <select id="provider"><option value="chatgpt">ChatGPT</option><option value="claude">Claude</option></select>
+      <div id="stage-settings" class="settings-grid"></div>
+      <small id="model-status" role="status"></small>
+    </details>
   </section>
   <section class="panel" aria-labelledby="status-title">
-    <div class="row"><h2 id="status-title">작업 현황</h2><button id="refresh" class="tertiary">새로고침</button></div>
-    <div id="connection" class="status" role="status">연결 확인 중</div>
+    <div class="row"><h2 id="status-title">�۾� ��Ȳ</h2><button id="refresh" class="tertiary">���ΰ�ħ</button></div>
+    <div id="connection" class="status" role="status">���� Ȯ�� ��</div>
     <div id="cards"></div>
-    <small>상태는 약 3분마다 갱신됩니다. 집 PC가 꺼져 있으면 요청은 대기합니다.</small>
+    <small>���´� �� 3�и��� ���ŵ˴ϴ�. ������ �ߡ��� PC ��ȣ�� �߰� ���°� ��� Ȯ�ε� ���� ǥ�õ˴ϴ�. PC�� ���� �־ GitHub ��û�� �����ϴ�.</small>
   </section>
 </main>
 <script>
@@ -62,52 +79,309 @@
 const RELAY_REPO = 'crhipse/concallbot-remote';
 const ALLOWED_USER_ID = 309101588;
 const MARKER = 'concall-control:v1';
+const COMPANY_QUERY_RE = /^[\p{L}\p{N}_ .,&()/-]{1,80}$/u;
+const SENSITIVE_QUERY = /(?:github_pat_|gh[pousr]_|sk-[A-Za-z0-9_-]{12,}|xox[baprs]-|(?:^|\s)\/(?:home|Users|tmp|etc|mnt)\/|\b\d{10,}\b|\b\d{3}[- ]\d{3,4}[- ]\d{4}\b)/i;
+/* STATUS_CONTRACT_START */
+const HEARTBEAT_MARKER = 'concall-relay-heartbeat:v1';
+const HEARTBEAT_TITLE = '[cc-heartbeat:v1]';
+const HEARTBEAT_MAX_AGE_MS = 5 * 60 * 1000;
+const STATUS_TITLE = /^\[cc:v1:([a-z_]+)(?::([a-z_]+))?\]\s/;
+const WAITING_PHASES = new Set(['lookup_waiting','company_choice_initial',
+  'company_choice_pending','ready','accepted','kpi_waiting']);
+const RUNNING_PHASES = new Set(['running_single','running_four','kpi_running']);
+const FAILURE_TEXT = {model_unavailable:'���� �� ��� �Ұ�',
+  model_mismatch:'��û �𵨰� ���� ��� ���� �޶� �ߴ�',
+  cli_unavailable:'PC �� �α��Ρ���ġ Ȯ�� �ʿ�',
+  source_unavailable:'���� �ڷ� �Ǵ� ���� Ȯ�� �ʿ�',
+  job_failed:'PC �۾� ���� �� ���� �α� Ȯ�� �ʿ�'};
+function heartbeatStatus(issues, allowedUserId, nowMs) {
+  const candidates = issues.filter(issue => issue && !issue.pull_request &&
+    issue.state === 'open' && issue.user?.id === allowedUserId &&
+    issue.title === HEARTBEAT_TITLE && typeof issue.body === 'string');
+  let latest = null;
+  for (const issue of candidates) {
+    const body = issue.body.replace(/\r\n/g, '\n');
+    const match = /^concall-relay-heartbeat:v1\nstatus: connected\nobserved_at: (\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\n?$/.exec(body);
+    if (!match) continue;
+    const time = Date.parse(match[1]);
+    if (!Number.isFinite(time) || time > nowMs + 60000) continue;
+    if (latest === null || time > latest) {
+      latest = time;
+    }
+  }
+  const fresh = latest !== null && nowMs - latest <= HEARTBEAT_MAX_AGE_MS;
+  return {fresh, observedAt: latest};
+}
+function publicIssueState(issue, heartbeatFresh) {
+  const match = STATUS_TITLE.exec(issue.title || '');
+  const phase = match?.[1];
+  if (phase === 'manual_review') return 'PC ���� ��� ���� Ȯ�� �ʿ� �� �ڵ� ��õ� �ߴ�';
+  if (phase === 'completed' && issue.state === 'closed') return '�Ϸ�';
+  if (phase === 'failed' && issue.state === 'closed')
+    return `���� �� ${FAILURE_TEXT[match[2]] || FAILURE_TEXT.job_failed}`;
+  if (phase === 'kpi_blocked' && issue.state === 'closed') return 'KPI ��� �غ� ��';
+  if (phase === 'kpi_local_ready' && issue.state === 'closed')
+    return 'PC ������ ���� �� ���� ���';
+  if (phase === 'kpi_partial' && issue.state === 'closed')
+    return '�ڷ� ���� �� ���� �ʿ�';
+  if (phase === 'uncertain') return '���� �Ҹ�';
+  if (heartbeatFresh && issue.state === 'open') {
+    if (RUNNING_PHASES.has(phase)) return '���� ��';
+    if (WAITING_PHASES.has(phase)) return '���';
+    if (!phase) return '���� ��� �� �߰� ���� ��Ȯ��';
+  }
+  return '���� �Ҹ�';
+}
+function primaryRequest(issue) {
+  if (!issue || issue.pull_request || issue.user?.id !== ALLOWED_USER_ID ||
+      !Number.isSafeInteger(issue.number) || issue.number <= 0 ||
+      typeof issue.body !== 'string' || !issue.body.startsWith(MARKER + '\n')) return null;
+  const action = /^action: (lookup|kpi_start)$/m.exec(issue.body)?.[1];
+  const query = /^query: ([^\r\n]{1,80})$/m.exec(issue.body)?.[1];
+  return action && query && COMPANY_QUERY_RE.test(query) &&
+    !SENSITIVE_QUERY.test(query) ? {action, query} : null;
+}
+/* STATUS_CONTRACT_END */
+/* MODEL_CATALOG_START */
+const MODEL_CATALOG_MARKER = 'concall-model-catalog:v1';
+const MODEL_CATALOG_TITLE = '[cc-model-catalog:v1]';
+const MODEL_CATALOG_SOURCES = ['https://developers.openai.com/api/docs/models.md',
+  'https://platform.claude.com/docs/en/models/overview.md'];
+const MODEL_CATALOG_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+const MODEL_ID = /^[a-z][a-z0-9._-]{2,79}$/;
+function publicModelCatalog(issues, allowedUserId, nowMs) {
+  for (const issue of issues) {
+    if (!issue || issue.pull_request || issue.state !== 'open' ||
+        issue.title !== MODEL_CATALOG_TITLE ||
+        issue.user?.id !== allowedUserId || typeof issue.body !== 'string' ||
+        !issue.body.startsWith(MODEL_CATALOG_MARKER + '\n')) continue;
+    let data;
+    try { data = JSON.parse(issue.body.slice(MODEL_CATALOG_MARKER.length + 1)); }
+    catch (_) { continue; }
+    const checkedAt = Date.parse(data?.checked_at_utc);
+    if (data?.schema !== 1 || !Number.isFinite(checkedAt) ||
+        checkedAt > nowMs + 60000 || nowMs - checkedAt > MODEL_CATALOG_MAX_AGE_MS ||
+        !Array.isArray(data.sources) || data.sources.length !== 2 ||
+        !MODEL_CATALOG_SOURCES.every(url => data.sources.includes(url)) ||
+        !Array.isArray(data.models) || data.models.length < 4 || data.models.length > 60) continue;
+    const choices = {chatgpt: [], claude: []};
+    let valid = true;
+    for (const item of data.models) {
+      const provider = item?.provider, id = item?.id;
+      if (!Object.hasOwn(choices, provider) || typeof id !== 'string' ||
+          !MODEL_ID.test(id) || !id.startsWith(provider === 'chatgpt' ? 'gpt-' : 'claude-') ||
+          choices[provider].includes(id)) { valid = false; break; }
+      choices[provider].push(id);
+    }
+    if (valid && choices.chatgpt.length && choices.claude.length)
+      return {choices, checkedAt};
+  }
+  return null;
+}
+/* MODEL_CATALOG_END */
 const company = document.getElementById('company');
 const cards = document.getElementById('cards');
 const connection = document.getElementById('connection');
+const workflowSelect = document.getElementById('workflow');
+const providerSelect = document.getElementById('provider');
+const settingsGrid = document.getElementById('stage-settings');
+const modelStatus = document.getElementById('model-status');
+const STAGES = {
+  concall: [['correct','����'],['verify','��������'],['summary','���'],
+    ['inference','�߷�'],['source_note','�ڷ��Ʈ'],['analysis','����м�'],
+    ['explainer','�ؼ�'],['charts','��Ʈ']],
+  kpi: [['proposal','���� �ʾ�'],['finalize','���� Ȯ��'],['extract','�ڷ� ����'],
+    ['verify_extract','���� ����'],['resolve','����ġ �ؼ�']]
+};
+const HISTORICALLY_TESTED_MODELS = {
+  chatgpt: ['gpt-6.1-sol','gpt-6.1-terra'],
+  claude: ['claude-opus-5-5','claude-sonnet-5-5']
+};
+let modelCatalog = null;
+function modelChoices(provider) {
+  return modelCatalog?.choices[provider] || HISTORICALLY_TESTED_MODELS[provider];
+}
+const EFFORTS = ['low','medium','high','xhigh','max'];
+const STORAGE_KEY = 'concall-control-model-profiles-v1';
+function defaults(workflow, provider) {
+  const low = provider === 'chatgpt' ? 'gpt-6.1-terra' : 'claude-sonnet-5-5';
+  const high = provider === 'chatgpt' ? 'gpt-6.1-sol' : 'claude-opus-5-5';
+  const stages = {};
+  for (const [stage] of STAGES[workflow]) {
+    const lesser = workflow === 'concall'
+      ? ['correct','verify','summary'].includes(stage)
+      : ['extract','verify_extract'].includes(stage);
+    stages[stage] = {model: lesser ? low : high,
+      effort: workflow === 'concall' && lesser ? 'high' : 'xhigh'};
+  }
+  return {provider, stages};
+}
+let savedProfiles = {};
+try { savedProfiles = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+catch (_) { savedProfiles = {}; }
+if (!savedProfiles || typeof savedProfiles !== 'object' || Array.isArray(savedProfiles)) savedProfiles = {};
+function profileKey(workflow, provider) { return `${workflow}:${provider}`; }
+function currentProfile() {
+  const workflow = workflowSelect.value, provider = providerSelect.value;
+  const key = profileKey(workflow, provider);
+  if (!savedProfiles[key]) savedProfiles[key] = defaults(workflow, provider);
+  return savedProfiles[key];
+}
+function persistProfiles() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedProfiles)); }
+  catch (_) { modelStatus.textContent = '�������� ������ ������ �� �����ϴ�. ���� �ǿ����� ����� �� �ֽ��ϴ�.'; }
+}
+function validProfile(workflow, provider, profile) {
+  return profile && profile.provider === provider && profile.stages &&
+    Object.keys(profile.stages).length === STAGES[workflow].length &&
+    STAGES[workflow].every(([stage]) =>
+      modelChoices(provider).includes(profile.stages[stage]?.model) &&
+      EFFORTS.includes(profile.stages[stage]?.effort));
+}
+function renderSettings() {
+  const workflow = workflowSelect.value, provider = providerSelect.value;
+  const profile = currentProfile();
+  settingsGrid.replaceChildren();
+  for (const [stage, label] of STAGES[workflow]) {
+    const title = document.createElement('div');
+    title.className = 'stage-label';
+    title.textContent = label;
+    const model = document.createElement('select');
+    model.setAttribute('aria-label', `${label} ��`);
+    const selected = profile.stages?.[stage]?.model;
+    const choices = modelChoices(provider);
+    for (const id of [...new Set([...choices, selected].filter(Boolean))]) {
+      const option = document.createElement('option');
+      option.value = id;
+      option.textContent = choices.includes(id)
+        ? `${id} (${HISTORICALLY_TESTED_MODELS[provider].includes(id)
+            ? 'CLI ���� Ȯ��' : '���� ��� �� PC ��� ��Ȯ��'})`
+        : `${id} (���� ��Ͽ� ���� �� ���� �ʿ�)`;
+      option.disabled = !choices.includes(id);
+      model.append(option);
+    }
+    model.value = selected || '';
+    const effort = document.createElement('select');
+    effort.setAttribute('aria-label', `${label} �߷� ����`);
+    for (const id of EFFORTS) {
+      const option = document.createElement('option');
+      option.value = id; option.textContent = id;
+      effort.append(option);
+    }
+    effort.value = profile.stages?.[stage]?.effort || '';
+    model.addEventListener('change', () => {
+      profile.stages[stage].model = model.value; persistProfiles(); updateModelStatus();
+    });
+    effort.addEventListener('change', () => {
+      profile.stages[stage].effort = effort.value; persistProfiles(); updateModelStatus();
+    });
+    settingsGrid.append(title, model, effort);
+  }
+  updateModelStatus();
+}
+function updateModelStatus() {
+  const workflow = workflowSelect.value, provider = providerSelect.value;
+  const catalogText = modelCatalog
+    ? `���� �� ���: ${new Date(modelCatalog.checkedAt).toLocaleDateString('ko-KR')} Ȯ��. `
+    : '���� �� ����� �ֱ� ������ Ȯ������ ���߽��ϴ�. ';
+  modelStatus.textContent = catalogText + (validProfile(workflow, provider, currentProfile())
+    ? 'PC���� ���� ��� ���������� ��û ó�� �� Ȯ���մϴ�. ������ �𵨷θ� �����ϰ� �ڵ� ��ü���� �ʽ��ϴ�.'
+    : '������ ���� ���� ��Ͽ� ���� ��û�� �� �����ϴ�. ���� ���� ������ �ּ���.');
+}
+function encodedProfile(profile) {
+  const bytes = new TextEncoder().encode(JSON.stringify(profile));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
 
 function request(action) {
+  if (action === 'kpi_start' && document.getElementById('kpi').disabled) {
+    modelStatus.textContent = 'KPI �۾��� PC���� ���� Ȱ��ȭ���� �ʾҽ��ϴ�.';
+    return;
+  }
   const query = company.value.trim();
-  if (!query || query.length > 80 || !/^[\p{L}\p{N}_ .,&()/-]+$/u.test(query)) {
-    company.setCustomValidity('회사명 또는 티커를 80자 이내로 입력하세요.');
+  if (!COMPANY_QUERY_RE.test(query) || SENSITIVE_QUERY.test(query)) {
+    company.setCustomValidity('ȸ��� �Ǵ� ƼĿ�� 80�� �̳��� �Է��ϼ���. ��������� ����ó�� �����ϼ���.');
     company.reportValidity();
     return;
   }
   company.setCustomValidity('');
   const lines = [MARKER, `action: ${action}`, `query: ${query}`];
-  if (action === 'lookup') lines.push(`mode: ${document.getElementById('mode').value}`);
-  const title = action === 'lookup' ? `컨콜 · ${query}` : `KPI · ${query}`;
+  if (action === 'lookup') {
+    const provider = providerSelect.value;
+    const profile = savedProfiles[profileKey('concall', provider)] || defaults('concall', provider);
+    if (!validProfile('concall', provider, profile)) {
+      document.getElementById('settings').open = true;
+      workflowSelect.value = 'concall'; renderSettings();
+      modelStatus.textContent = '�� ������ Ȯ���� �� �ٽ� ��û�ϼ���.';
+      return;
+    }
+    lines.push(`mode: ${document.getElementById('mode').value}`);
+    lines.push(`profile: ${encodedProfile(profile)}`);
+  } else if (action === 'kpi_start') {
+    const provider = providerSelect.value;
+    const profile = savedProfiles[profileKey('kpi', provider)] || defaults('kpi', provider);
+    if (!validProfile('kpi', provider, profile)) {
+      document.getElementById('settings').open = true;
+      workflowSelect.value = 'kpi'; renderSettings();
+      modelStatus.textContent = 'KPI �� ������ Ȯ���� �� �ٽ� ��û�ϼ���.';
+      return;
+    }
+    lines.push(`profile: ${encodedProfile(profile)}`);
+  }
+  const title = action === 'lookup' ? `���� �� ${query}` : `KPI �� ${query}`;
   const url = new URL(`https://github.com/${RELAY_REPO}/issues/new`);
   url.searchParams.set('title', title);
   url.searchParams.set('body', lines.join('\n'));
   location.href = url.href;
 }
 
-function textCard(issue) {
+function textCard(issue, requestInfo, heartbeatFresh) {
   const a = document.createElement('a');
   a.className = 'card';
-  a.href = issue.html_url;
+  a.href = `https://github.com/${RELAY_REPO}/issues/${issue.number}`;
   a.rel = 'noopener noreferrer';
   const strong = document.createElement('strong');
-  strong.textContent = issue.title;
+  strong.textContent = `${requestInfo.action === 'lookup' ? '����' : 'KPI'} �� ${requestInfo.query}`;
   const detail = document.createElement('span');
-  detail.textContent = `#${issue.number} · ${issue.state === 'closed' ? '종료' : '진행 중'} · ${new Date(issue.updated_at).toLocaleString('ko-KR')}`;
+  detail.textContent = `#${issue.number} �� ${publicIssueState(issue, heartbeatFresh)} �� GitHub ���� ${new Date(issue.updated_at).toLocaleString('ko-KR')}`;
   a.append(strong, detail);
   return a;
 }
 
 async function refresh() {
-  connection.textContent = 'GitHub 현황 확인 중';
+  connection.textContent = 'GitHub ��Ȳ Ȯ�� �� �� PC ������ ���� �Ҹ�';
   try {
     const url = `https://api.github.com/repos/${RELAY_REPO}/issues?state=all&sort=updated&direction=desc&per_page=50`;
     const response = await fetch(url, {headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
-    if (!response.ok) throw new Error(`GitHub 응답 ${response.status}`);
+    if (!response.ok) throw new Error(`GitHub ���� ${response.status}`);
     const issues = await response.json();
-    cards.replaceChildren(...issues.filter(x => !x.pull_request && x.user?.id === ALLOWED_USER_ID && typeof x.body === 'string' && x.body.startsWith(MARKER + '\n')).slice(0, 20).map(textCard));
-    if (!cards.children.length) cards.textContent = '표시할 요청이 없습니다.';
-    connection.textContent = `업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+    if (!Array.isArray(issues)) throw new Error('Issue ��� ���� ����');
+    const nextCatalog = publicModelCatalog(issues, ALLOWED_USER_ID, Date.now());
+    if (JSON.stringify(nextCatalog) !== JSON.stringify(modelCatalog)) {
+      modelCatalog = nextCatalog;
+      renderSettings();
+    }
+    const heartbeat = heartbeatStatus(issues, ALLOWED_USER_ID, Date.now());
+    const kpiButton = document.getElementById('kpi');
+    kpiButton.disabled = true;
+    kpiButton.textContent = 'KPI ���� ��û �� �غ� ��';
+    const requests = issues.map(issue => ({issue, info: primaryRequest(issue)}))
+      .filter(item => item.info).slice(0, 20);
+    cards.replaceChildren(...requests.map(({issue, info}) =>
+      textCard(issue, info, heartbeat.fresh)));
+    if (!cards.children.length) cards.textContent = 'ǥ���� ��û�� �����ϴ�.';
+    connection.textContent = heartbeat.fresh
+      ? `PC �߰� ���� Ȯ�� �� ������ ��ȣ ${new Date(heartbeat.observedAt).toLocaleTimeString('ko-KR')}`
+      : 'PC ���� �Ҹ� �� �ֱ� �߰� ��ȣ�� Ȯ�ε��� �ʾҽ��ϴ�.';
   } catch (error) {
-    connection.textContent = `현황을 불러오지 못했습니다. ${error.message}`;
+    const kpiButton = document.getElementById('kpi');
+    kpiButton.disabled = true;
+    kpiButton.textContent = 'KPI ���� ��û �� ���� Ȯ�� �ʿ�';
+    cards.replaceChildren();
+    cards.textContent = '�۾� ���¸� Ȯ���� �� �����ϴ�.';
+    connection.textContent = `��Ȳ�� �ҷ����� ���߽��ϴ�. ${error.message}`;
   }
 }
 
@@ -115,6 +389,9 @@ document.getElementById('concall').addEventListener('click', () => request('look
 document.getElementById('kpi').addEventListener('click', () => request('kpi_start'));
 document.getElementById('refresh').addEventListener('click', refresh);
 company.addEventListener('input', () => company.setCustomValidity(''));
+workflowSelect.addEventListener('change', renderSettings);
+providerSelect.addEventListener('change', renderSettings);
+renderSettings();
 refresh();
 setInterval(refresh, 180000);
 </script>
