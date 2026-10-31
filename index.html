@@ -3,33 +3,35 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#10212e">
+  <meta name="theme-color" content="#f6f8f7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Concall Control</title>
   <style>
-    :root { color-scheme: dark; font-family: system-ui, -apple-system, sans-serif; background:#0b1720; color:#edf4f3 }
+    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; background:#f6f8f7; color:#1c302a }
     * { box-sizing:border-box }
-    body { margin:0; min-height:100vh; background:linear-gradient(160deg,#10212e,#09141a 70%); padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom) }
+    body { margin:0; min-height:100vh; background:linear-gradient(160deg,#f6f8f7,#eaf2ee 85%); padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom) }
     main { max-width:640px; margin:auto; padding:32px 0 80px }
     h1 { font-size:1.9rem; margin:.3rem 0 }
     h2 { font-size:1.15rem; margin:0 0 16px }
-    p { line-height:1.55; color:#b2c4c7 }
-    .eyebrow { color:#72dbc2; font-weight:700; font-size:.82rem; letter-spacing:.12em; text-transform:uppercase }
-    .panel { background:#172b37; border:1px solid #31505b; border-radius:18px; padding:20px; margin-top:20px; box-shadow:0 12px 30px #0002 }
+    p { line-height:1.55; color:#52665d }
+    .eyebrow { color:#08714f; font-weight:700; font-size:.82rem; letter-spacing:.12em; text-transform:uppercase }
+    .panel { background:#fff; border:1px solid #d2e2da; border-radius:18px; padding:20px; margin-top:20px; box-shadow:0 12px 30px #1c443114 }
     label { display:block; font-size:.93rem; font-weight:650; margin:0 0 8px }
-    input,select { width:100%; min-height:48px; border-radius:11px; border:1px solid #4d6c75; background:#0e202a; color:#fff; padding:0 13px; font:inherit }
+    input,select { width:100%; min-height:48px; border-radius:11px; border:1px solid #a9c3b7; background:#fff; color:#1c302a; padding:0 13px; font:inherit }
     select { margin-bottom:14px }
     input { margin-bottom:16px }
-    button,.action { display:block; width:100%; min-height:48px; border:0; border-radius:11px; font:inherit; font-weight:750; cursor:pointer; text-align:center; text-decoration:none; padding:12px; background:#79dec3; color:#09221c }
-    button.secondary { margin-top:10px; background:#294a58; color:#e8f4f1; border:1px solid #5c8190 }
-    button.tertiary { width:auto; min-height:36px; padding:7px 12px; background:#294a58; color:#e8f4f1; font-size:.87rem }
+    button,.action { display:block; width:100%; min-height:48px; border:0; border-radius:11px; font:inherit; font-weight:750; cursor:pointer; text-align:center; text-decoration:none; padding:12px; background:#087d56; color:#fff }
+    button.secondary { margin-top:10px; background:#edf5f0; color:#19543d; border:1px solid #9bc9af }
+    button.tertiary { width:auto; min-height:36px; padding:7px 12px; background:#edf5f0; color:#19543d; border:1px solid #9bc9af; font-size:.87rem }
     button:disabled { opacity:.55; cursor:not-allowed }
-    small { display:block; margin-top:10px; color:#a6b9bd; line-height:1.45 }
+    small { display:block; margin-top:10px; color:#52665d; line-height:1.45 }
     .row { display:flex; align-items:center; justify-content:space-between; gap:10px }
-    .status { color:#a9e5d3; font-size:.88rem }
-    .card { display:block; border-top:1px solid #35515b; padding:14px 0; color:inherit; text-decoration:none }
+    .status { color:#136e4b; font-size:.88rem }
+    .card { display:block; border-top:1px solid #d2e2da; padding:14px 0; color:inherit; text-decoration:none }
     .card strong { display:block; margin-bottom:5px }
-    .card span { color:#a6b9bd; font-size:.88rem }
+    .card span { color:#52665d; font-size:.88rem }
+    :focus-visible { outline:3px solid #1165b5; outline-offset:2px }
+    @media (max-width:420px) { main { padding-top:22px } .panel { padding:16px } h1 { font-size:1.65rem } }
     .notice { font-size:.92rem }
   </style>
 </head>
