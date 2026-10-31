@@ -45,33 +45,33 @@
 <body>
 <main>
   <div class="eyebrow">Concall Control</div>
-  <h1>�� PC �۾� ��û</h1>
-  <p>ȸ�纰 ���ݰ� KPI �۾��� ��û�ϰ� ���� ��Ȳ�� Ȯ���մϴ�.</p>
+  <h1>집 PC 작업 요청</h1>
+  <p>회사별 컨콜과 KPI 작업을 요청하고 진행 상황을 확인합니다.</p>
   <section class="panel" aria-labelledby="request-title">
-    <h2 id="request-title">�� �۾�</h2>
-    <label for="company">ȸ��� �Ǵ� ƼĿ</label>
-    <input id="company" maxlength="80" autocomplete="off" placeholder="��: MSFT">
-    <label for="mode">���� ����</label>
-    <select id="mode"><option value="single">������ �� 1��</option><option value="four">�ֱ� �� 4��</option></select>
-    <button id="concall">���� ��û</button>
-    <button class="secondary" id="kpi" disabled>KPI ���� ��û �� �غ� ��</button>
-    <small>��ư�� ������ GitHub �ۼ� ȭ���� �����ϴ�. �α��� �� ������ ������ ��û�� �����˴ϴ�.</small>
-    <small>ȸ����� �۾� ���´� ���� �̽��� ǥ�õ˴ϴ�. �̸���, ��ȭ��ȣ, ��й�ȣ, ��ū, PC ��δ� �Է����� ������.</small>
+    <h2 id="request-title">새 작업</h2>
+    <label for="company">회사명 또는 티커</label>
+    <input id="company" maxlength="80" autocomplete="off" placeholder="예: MSFT">
+    <label for="mode">컨콜 범위</label>
+    <select id="mode"><option value="single">선택한 콜 1개</option><option value="four">최근 콜 4개</option></select>
+    <button id="concall">컨콜 요청</button>
+    <button class="secondary" id="kpi" disabled>KPI 엑셀 요청 · 준비 중</button>
+    <small>버튼을 누르면 GitHub 작성 화면이 열립니다. 로그인 후 제출을 눌러야 요청이 접수됩니다.</small>
+    <small>회사명과 작업 상태는 공개 이슈에 표시됩니다. 이메일, 전화번호, 비밀번호, 토큰, PC 경로는 입력하지 마세요.</small>
     <details id="settings">
-      <summary>�� ����</summary>
-      <label for="workflow">�۾�</label>
-      <select id="workflow"><option value="concall">����</option><option value="kpi">KPI ����</option></select>
-      <label for="provider">������</label>
+      <summary>모델 설정</summary>
+      <label for="workflow">작업</label>
+      <select id="workflow"><option value="concall">컨콜</option><option value="kpi">KPI 엑셀</option></select>
+      <label for="provider">제공자</label>
       <select id="provider"><option value="chatgpt">ChatGPT</option><option value="claude">Claude</option></select>
       <div id="stage-settings" class="settings-grid"></div>
       <small id="model-status" role="status"></small>
     </details>
   </section>
   <section class="panel" aria-labelledby="status-title">
-    <div class="row"><h2 id="status-title">�۾� ��Ȳ</h2><button id="refresh" class="tertiary">���ΰ�ħ</button></div>
-    <div id="connection" class="status" role="status">���� Ȯ�� ��</div>
+    <div class="row"><h2 id="status-title">작업 현황</h2><button id="refresh" class="tertiary">새로고침</button></div>
+    <div id="connection" class="status" role="status">연결 확인 중</div>
     <div id="cards"></div>
-    <small>���´� �� 3�и��� ���ŵ˴ϴ�. ������ �ߡ��� PC ��ȣ�� �߰� ���°� ��� Ȯ�ε� ���� ǥ�õ˴ϴ�. PC�� ���� �־ GitHub ��û�� �����ϴ�.</small>
+    <small>상태는 약 3분마다 갱신됩니다. ‘실행 중’은 PC 신호와 중계 상태가 모두 확인될 때만 표시됩니다. PC가 꺼져 있어도 GitHub 요청은 남습니다.</small>
   </section>
 </main>
 <script>
@@ -89,11 +89,11 @@ const STATUS_TITLE = /^\[cc:v1:([a-z_]+)(?::([a-z_]+))?\]\s/;
 const WAITING_PHASES = new Set(['lookup_waiting','company_choice_initial',
   'company_choice_pending','ready','accepted','kpi_waiting']);
 const RUNNING_PHASES = new Set(['running_single','running_four','kpi_running']);
-const FAILURE_TEXT = {model_unavailable:'���� �� ��� �Ұ�',
-  model_mismatch:'��û �𵨰� ���� ��� ���� �޶� �ߴ�',
-  cli_unavailable:'PC �� �α��Ρ���ġ Ȯ�� �ʿ�',
-  source_unavailable:'���� �ڷ� �Ǵ� ���� Ȯ�� �ʿ�',
-  job_failed:'PC �۾� ���� �� ���� �α� Ȯ�� �ʿ�'};
+const FAILURE_TEXT = {model_unavailable:'선택 모델 사용 불가',
+  model_mismatch:'요청 모델과 실제 사용 모델이 달라 중단',
+  cli_unavailable:'PC 모델 로그인·설치 확인 필요',
+  source_unavailable:'공식 자료 또는 설정 확인 필요',
+  job_failed:'PC 작업 실패 · 로컬 로그 확인 필요'};
 function heartbeatStatus(issues, allowedUserId, nowMs) {
   const candidates = issues.filter(issue => issue && !issue.pull_request &&
     issue.state === 'open' && issue.user?.id === allowedUserId &&
@@ -115,22 +115,22 @@ function heartbeatStatus(issues, allowedUserId, nowMs) {
 function publicIssueState(issue, heartbeatFresh) {
   const match = STATUS_TITLE.exec(issue.title || '');
   const phase = match?.[1];
-  if (phase === 'manual_review') return 'PC ���� ��� ���� Ȯ�� �ʿ� �� �ڵ� ��õ� �ߴ�';
-  if (phase === 'completed' && issue.state === 'closed') return '�Ϸ�';
+  if (phase === 'manual_review') return 'PC 접수 결과 수동 확인 필요 · 자동 재시도 중단';
+  if (phase === 'completed' && issue.state === 'closed') return '완료';
   if (phase === 'failed' && issue.state === 'closed')
-    return `���� �� ${FAILURE_TEXT[match[2]] || FAILURE_TEXT.job_failed}`;
-  if (phase === 'kpi_blocked' && issue.state === 'closed') return 'KPI ��� �غ� ��';
+    return `실패 · ${FAILURE_TEXT[match[2]] || FAILURE_TEXT.job_failed}`;
+  if (phase === 'kpi_blocked' && issue.state === 'closed') return 'KPI 기능 준비 중';
   if (phase === 'kpi_local_ready' && issue.state === 'closed')
-    return 'PC ������ ���� �� ���� ���';
+    return 'PC 검증본 생성 · 전달 대기';
   if (phase === 'kpi_partial' && issue.state === 'closed')
-    return '�ڷ� ���� �� ���� �ʿ�';
-  if (phase === 'uncertain') return '���� �Ҹ�';
+    return '자료 부족 · 검토 필요';
+  if (phase === 'uncertain') return '연결 불명';
   if (heartbeatFresh && issue.state === 'open') {
-    if (RUNNING_PHASES.has(phase)) return '���� ��';
-    if (WAITING_PHASES.has(phase)) return '���';
-    if (!phase) return '���� ��� �� �߰� ���� ��Ȯ��';
+    if (RUNNING_PHASES.has(phase)) return '실행 중';
+    if (WAITING_PHASES.has(phase)) return '대기';
+    if (!phase) return '접수 대기 · 중계 수신 미확인';
   }
-  return '���� �Ҹ�';
+  return '연결 불명';
 }
 function primaryRequest(issue) {
   if (!issue || issue.pull_request || issue.user?.id !== ALLOWED_USER_ID ||
@@ -187,11 +187,11 @@ const providerSelect = document.getElementById('provider');
 const settingsGrid = document.getElementById('stage-settings');
 const modelStatus = document.getElementById('model-status');
 const STAGES = {
-  concall: [['correct','����'],['verify','��������'],['summary','���'],
-    ['inference','�߷�'],['source_note','�ڷ��Ʈ'],['analysis','����м�'],
-    ['explainer','�ؼ�'],['charts','��Ʈ']],
-  kpi: [['proposal','���� �ʾ�'],['finalize','���� Ȯ��'],['extract','�ڷ� ����'],
-    ['verify_extract','���� ����'],['resolve','����ġ �ؼ�']]
+  concall: [['correct','교정'],['verify','검증교정'],['summary','요약'],
+    ['inference','추론'],['source_note','자료노트'],['analysis','기업분석'],
+    ['explainer','해설'],['charts','차트']],
+  kpi: [['proposal','구조 초안'],['finalize','구조 확정'],['extract','자료 기입'],
+    ['verify_extract','독립 검증'],['resolve','불일치 해소']]
 };
 const HISTORICALLY_TESTED_MODELS = {
   chatgpt: ['gpt-6.1-sol','gpt-6.1-terra'],
@@ -229,7 +229,7 @@ function currentProfile() {
 }
 function persistProfiles() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedProfiles)); }
-  catch (_) { modelStatus.textContent = '�������� ������ ������ �� �����ϴ�. ���� �ǿ����� ����� �� �ֽ��ϴ�.'; }
+  catch (_) { modelStatus.textContent = '브라우저에 설정을 저장할 수 없습니다. 현재 탭에서는 사용할 수 있습니다.'; }
 }
 function validProfile(workflow, provider, profile) {
   return profile && profile.provider === provider && profile.stages &&
@@ -247,7 +247,7 @@ function renderSettings() {
     title.className = 'stage-label';
     title.textContent = label;
     const model = document.createElement('select');
-    model.setAttribute('aria-label', `${label} ��`);
+    model.setAttribute('aria-label', `${label} 모델`);
     const selected = profile.stages?.[stage]?.model;
     const choices = modelChoices(provider);
     for (const id of [...new Set([...choices, selected].filter(Boolean))]) {
@@ -255,14 +255,14 @@ function renderSettings() {
       option.value = id;
       option.textContent = choices.includes(id)
         ? `${id} (${HISTORICALLY_TESTED_MODELS[provider].includes(id)
-            ? 'CLI ���� Ȯ��' : '���� ��� �� PC ��� ��Ȯ��'})`
-        : `${id} (���� ��Ͽ� ���� �� ���� �ʿ�)`;
+            ? 'CLI 과거 확인' : '공식 목록 · PC 사용 미확인'})`
+        : `${id} (현재 목록에 없음 · 변경 필요)`;
       option.disabled = !choices.includes(id);
       model.append(option);
     }
     model.value = selected || '';
     const effort = document.createElement('select');
-    effort.setAttribute('aria-label', `${label} �߷� ����`);
+    effort.setAttribute('aria-label', `${label} 추론 강도`);
     for (const id of EFFORTS) {
       const option = document.createElement('option');
       option.value = id; option.textContent = id;
@@ -282,11 +282,11 @@ function renderSettings() {
 function updateModelStatus() {
   const workflow = workflowSelect.value, provider = providerSelect.value;
   const catalogText = modelCatalog
-    ? `���� �� ���: ${new Date(modelCatalog.checkedAt).toLocaleDateString('ko-KR')} Ȯ��. `
-    : '���� �� ����� �ֱ� ������ Ȯ������ ���߽��ϴ�. ';
+    ? `공식 모델 목록: ${new Date(modelCatalog.checkedAt).toLocaleDateString('ko-KR')} 확인. `
+    : '공식 모델 목록의 최근 갱신을 확인하지 못했습니다. ';
   modelStatus.textContent = catalogText + (validProfile(workflow, provider, currentProfile())
-    ? 'PC���� ���� ��� ���������� ��û ó�� �� Ȯ���մϴ�. ������ �𵨷θ� �����ϰ� �ڵ� ��ü���� �ʽ��ϴ�.'
-    : '������ ���� ���� ��Ͽ� ���� ��û�� �� �����ϴ�. ���� ���� ������ �ּ���.');
+    ? 'PC에서 현재 사용 가능한지는 요청 처리 때 확인합니다. 선택한 모델로만 실행하고 자동 대체하지 않습니다.'
+    : '선택한 모델이 현재 목록에 없어 요청할 수 없습니다. 모델을 직접 선택해 주세요.');
 }
 function encodedProfile(profile) {
   const bytes = new TextEncoder().encode(JSON.stringify(profile));
@@ -297,12 +297,12 @@ function encodedProfile(profile) {
 
 function request(action) {
   if (action === 'kpi_start' && document.getElementById('kpi').disabled) {
-    modelStatus.textContent = 'KPI �۾��� PC���� ���� Ȱ��ȭ���� �ʾҽ��ϴ�.';
+    modelStatus.textContent = 'KPI 작업은 PC에서 아직 활성화되지 않았습니다.';
     return;
   }
   const query = company.value.trim();
   if (!COMPANY_QUERY_RE.test(query) || SENSITIVE_QUERY.test(query)) {
-    company.setCustomValidity('ȸ��� �Ǵ� ƼĿ�� 80�� �̳��� �Է��ϼ���. ��������� ����ó�� �����ϼ���.');
+    company.setCustomValidity('회사명 또는 티커만 80자 이내로 입력하세요. 비밀정보와 연락처는 제외하세요.');
     company.reportValidity();
     return;
   }
@@ -314,7 +314,7 @@ function request(action) {
     if (!validProfile('concall', provider, profile)) {
       document.getElementById('settings').open = true;
       workflowSelect.value = 'concall'; renderSettings();
-      modelStatus.textContent = '�� ������ Ȯ���� �� �ٽ� ��û�ϼ���.';
+      modelStatus.textContent = '모델 설정을 확인한 뒤 다시 요청하세요.';
       return;
     }
     lines.push(`mode: ${document.getElementById('mode').value}`);
@@ -325,12 +325,12 @@ function request(action) {
     if (!validProfile('kpi', provider, profile)) {
       document.getElementById('settings').open = true;
       workflowSelect.value = 'kpi'; renderSettings();
-      modelStatus.textContent = 'KPI �� ������ Ȯ���� �� �ٽ� ��û�ϼ���.';
+      modelStatus.textContent = 'KPI 모델 설정을 확인한 뒤 다시 요청하세요.';
       return;
     }
     lines.push(`profile: ${encodedProfile(profile)}`);
   }
-  const title = action === 'lookup' ? `���� �� ${query}` : `KPI �� ${query}`;
+  const title = action === 'lookup' ? `컨콜 · ${query}` : `KPI · ${query}`;
   const url = new URL(`https://github.com/${RELAY_REPO}/issues/new`);
   url.searchParams.set('title', title);
   url.searchParams.set('body', lines.join('\n'));
@@ -343,21 +343,21 @@ function textCard(issue, requestInfo, heartbeatFresh) {
   a.href = `https://github.com/${RELAY_REPO}/issues/${issue.number}`;
   a.rel = 'noopener noreferrer';
   const strong = document.createElement('strong');
-  strong.textContent = `${requestInfo.action === 'lookup' ? '����' : 'KPI'} �� ${requestInfo.query}`;
+  strong.textContent = `${requestInfo.action === 'lookup' ? '컨콜' : 'KPI'} · ${requestInfo.query}`;
   const detail = document.createElement('span');
-  detail.textContent = `#${issue.number} �� ${publicIssueState(issue, heartbeatFresh)} �� GitHub ���� ${new Date(issue.updated_at).toLocaleString('ko-KR')}`;
+  detail.textContent = `#${issue.number} · ${publicIssueState(issue, heartbeatFresh)} · GitHub 갱신 ${new Date(issue.updated_at).toLocaleString('ko-KR')}`;
   a.append(strong, detail);
   return a;
 }
 
 async function refresh() {
-  connection.textContent = 'GitHub ��Ȳ Ȯ�� �� �� PC ������ ���� �Ҹ�';
+  connection.textContent = 'GitHub 현황 확인 중 · PC 연결은 아직 불명';
   try {
     const url = `https://api.github.com/repos/${RELAY_REPO}/issues?state=all&sort=updated&direction=desc&per_page=50`;
     const response = await fetch(url, {headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
-    if (!response.ok) throw new Error(`GitHub ���� ${response.status}`);
+    if (!response.ok) throw new Error(`GitHub 응답 ${response.status}`);
     const issues = await response.json();
-    if (!Array.isArray(issues)) throw new Error('Issue ��� ���� ����');
+    if (!Array.isArray(issues)) throw new Error('Issue 목록 형식 오류');
     const nextCatalog = publicModelCatalog(issues, ALLOWED_USER_ID, Date.now());
     if (JSON.stringify(nextCatalog) !== JSON.stringify(modelCatalog)) {
       modelCatalog = nextCatalog;
@@ -366,22 +366,22 @@ async function refresh() {
     const heartbeat = heartbeatStatus(issues, ALLOWED_USER_ID, Date.now());
     const kpiButton = document.getElementById('kpi');
     kpiButton.disabled = true;
-    kpiButton.textContent = 'KPI ���� ��û �� �غ� ��';
+    kpiButton.textContent = 'KPI 엑셀 요청 · 준비 중';
     const requests = issues.map(issue => ({issue, info: primaryRequest(issue)}))
       .filter(item => item.info).slice(0, 20);
     cards.replaceChildren(...requests.map(({issue, info}) =>
       textCard(issue, info, heartbeat.fresh)));
-    if (!cards.children.length) cards.textContent = 'ǥ���� ��û�� �����ϴ�.';
+    if (!cards.children.length) cards.textContent = '표시할 요청이 없습니다.';
     connection.textContent = heartbeat.fresh
-      ? `PC �߰� ���� Ȯ�� �� ������ ��ȣ ${new Date(heartbeat.observedAt).toLocaleTimeString('ko-KR')}`
-      : 'PC ���� �Ҹ� �� �ֱ� �߰� ��ȣ�� Ȯ�ε��� �ʾҽ��ϴ�.';
+      ? `PC 중계 연결 확인 · 마지막 신호 ${new Date(heartbeat.observedAt).toLocaleTimeString('ko-KR')}`
+      : 'PC 연결 불명 · 최근 중계 신호가 확인되지 않았습니다.';
   } catch (error) {
     const kpiButton = document.getElementById('kpi');
     kpiButton.disabled = true;
-    kpiButton.textContent = 'KPI ���� ��û �� ���� Ȯ�� �ʿ�';
+    kpiButton.textContent = 'KPI 엑셀 요청 · 연결 확인 필요';
     cards.replaceChildren();
-    cards.textContent = '�۾� ���¸� Ȯ���� �� �����ϴ�.';
-    connection.textContent = `��Ȳ�� �ҷ����� ���߽��ϴ�. ${error.message}`;
+    cards.textContent = '작업 상태를 확인할 수 없습니다.';
+    connection.textContent = `현황을 불러오지 못했습니다. ${error.message}`;
   }
 }
 
