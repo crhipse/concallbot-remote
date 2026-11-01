@@ -2,398 +2,143 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f6f8f7">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>Concall Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>���ݺ� ��Ȳ</title>
   <style>
-    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; background:#f6f8f7; color:#1c302a }
+    :root { color-scheme: light; font-family: system-ui, "Malgun Gothic", sans-serif; background:#f5f8fc; color:#17253b }
     * { box-sizing:border-box }
-    body { margin:0; min-height:100vh; background:linear-gradient(160deg,#f6f8f7,#eaf2ee 85%); padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom) }
-    main { max-width:640px; margin:auto; padding:32px 0 80px }
-    h1 { font-size:1.9rem; margin:.3rem 0 }
-    h2 { font-size:1.15rem; margin:0 0 16px }
-    p { line-height:1.55; color:#52665d }
-    .eyebrow { color:#08714f; font-weight:700; font-size:.82rem; letter-spacing:.12em; text-transform:uppercase }
-    .panel { background:#fff; border:1px solid #d2e2da; border-radius:18px; padding:20px; margin-top:20px; box-shadow:0 12px 30px #1c443114 }
-    label { display:block; font-size:.93rem; font-weight:650; margin:0 0 8px }
-    input,select { width:100%; min-height:48px; border-radius:11px; border:1px solid #a9c3b7; background:#fff; color:#1c302a; padding:0 13px; font:inherit }
-    select { margin-bottom:14px }
-    input { margin-bottom:16px }
-    button,.action { display:block; width:100%; min-height:48px; border:0; border-radius:11px; font:inherit; font-weight:750; cursor:pointer; text-align:center; text-decoration:none; padding:12px; background:#087d56; color:#fff }
-    button.secondary { margin-top:10px; background:#edf5f0; color:#19543d; border:1px solid #9bc9af }
-    button.tertiary { width:auto; min-height:36px; padding:7px 12px; background:#edf5f0; color:#19543d; border:1px solid #9bc9af; font-size:.87rem }
-    button:disabled { opacity:.55; cursor:not-allowed }
-    small { display:block; margin-top:10px; color:#52665d; line-height:1.45 }
-    .row { display:flex; align-items:center; justify-content:space-between; gap:10px }
-    .status { color:#136e4b; font-size:.88rem }
-    .card { display:block; border-top:1px solid #d2e2da; padding:14px 0; color:inherit; text-decoration:none }
-    .card strong { display:block; margin-bottom:5px }
-    .card span { color:#52665d; font-size:.88rem }
-    :focus-visible { outline:3px solid #1165b5; outline-offset:2px }
-    @media (max-width:420px) { main { padding-top:22px } .panel { padding:16px } h1 { font-size:1.65rem } }
-    .notice { font-size:.92rem }
-    details { border-top:1px solid #d2e2da; padding-top:16px; margin-top:18px }
-    summary { cursor:pointer; font-weight:750; color:#19543d; padding:4px 0 }
-    .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; margin-top:16px }
-    .settings-grid label { grid-column:1 / -1; margin-top:8px }
-    .settings-grid select { min-width:0 }
-    .settings-grid .stage-label { grid-column:1 / -1; margin-top:8px; font-weight:650; font-size:.9rem }
-    @media (max-width:420px) { .settings-grid { grid-template-columns:1fr } }
+    body { max-width:940px; margin:0 auto; padding:24px 16px 64px }
+    header { display:flex; justify-content:space-between; align-items:start; gap:20px; margin-bottom:20px }
+    h1 { font-size:1.8rem; margin:0 0 8px }
+    h2 { font-size:1.12rem; margin:0 0 14px }
+    p { line-height:1.5; margin:6px 0 }
+    .muted { color:#52647e }
+    .panel { background:white; border:1px solid #dbe4f1; border-radius:16px; padding:20px; margin:16px 0; box-shadow:0 3px 12px #17253b08 }
+    .badge { display:inline-block; padding:7px 11px; border-radius:999px; font-weight:700; background:#e4eaf2; white-space:nowrap }
+    .badge.live { background:#d9f5e8; color:#075a3b }
+    .badge.stale { background:#fff0d0; color:#725000 }
+    .summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px }
+    .metric { background:#f4f7fb; padding:15px; border-radius:12px }
+    .metric strong { display:block; font-size:1.6rem; margin-top:5px }
+    table { border-collapse:collapse; width:100%; text-align:left }
+    th,td { padding:9px 7px; border-bottom:1px solid #e3eaf3; overflow-wrap:anywhere }
+    th { color:#52647e; font-weight:600 }
+    .table-wrap { overflow-x:auto }
+    .empty { padding:12px; background:#f4f7fb; border-radius:10px }
+    @media(max-width:600px) { header { display:block } .badge { margin-top:12px } .panel { padding:16px } h1 { font-size:1.5rem } }
   </style>
 </head>
 <body>
-<main>
-  <div class="eyebrow">Concall Control</div>
-  <h1>집 PC 작업 요청</h1>
-  <p>회사별 컨콜과 KPI 작업을 요청하고 진행 상황을 확인합니다.</p>
-  <section class="panel" aria-labelledby="request-title">
-    <h2 id="request-title">새 작업</h2>
-    <label for="company">회사명 또는 티커</label>
-    <input id="company" maxlength="80" autocomplete="off" placeholder="예: MSFT">
-    <label for="mode">컨콜 범위</label>
-    <select id="mode"><option value="single">선택한 콜 1개</option><option value="four">최근 콜 4개</option></select>
-    <button id="concall">컨콜 요청</button>
-    <button class="secondary" id="kpi" disabled>KPI 엑셀 요청 · 준비 중</button>
-    <small>버튼을 누르면 GitHub 작성 화면이 열립니다. 로그인 후 제출을 눌러야 요청이 접수됩니다.</small>
-    <small>회사명과 작업 상태는 공개 이슈에 표시됩니다. 이메일, 전화번호, 비밀번호, 토큰, PC 경로는 입력하지 마세요.</small>
-    <details id="settings">
-      <summary>모델 설정</summary>
-      <label for="workflow">작업</label>
-      <select id="workflow"><option value="concall">컨콜</option><option value="kpi">KPI 엑셀</option></select>
-      <label for="provider">제공자</label>
-      <select id="provider"><option value="chatgpt">ChatGPT</option><option value="claude">Claude</option></select>
-      <div id="stage-settings" class="settings-grid"></div>
-      <small id="model-status" role="status"></small>
-    </details>
-  </section>
-  <section class="panel" aria-labelledby="status-title">
-    <div class="row"><h2 id="status-title">작업 현황</h2><button id="refresh" class="tertiary">새로고침</button></div>
-    <div id="connection" class="status" role="status">연결 확인 중</div>
-    <div id="cards"></div>
-    <small>상태는 약 3분마다 갱신됩니다. ‘실행 중’은 PC 신호와 중계 상태가 모두 확인될 때만 표시됩니다. PC가 꺼져 있어도 GitHub 요청은 남습니다.</small>
-  </section>
-</main>
-<script>
-// Publish this file only after replacing this proposed relay repository name.
-const RELAY_REPO = 'crhipse/concallbot-remote';
-const ALLOWED_USER_ID = 309101588;
-const MARKER = 'concall-control:v1';
-const COMPANY_QUERY_RE = /^[\p{L}\p{N}_ .,&()/-]{1,80}$/u;
-const SENSITIVE_QUERY = /(?:github_pat_|gh[pousr]_|sk-[A-Za-z0-9_-]{12,}|xox[baprs]-|(?:^|\s)\/(?:home|Users|tmp|etc|mnt)\/|\b\d{10,}\b|\b\d{3}[- ]\d{3,4}[- ]\d{4}\b)/i;
-/* STATUS_CONTRACT_START */
-const HEARTBEAT_MARKER = 'concall-relay-heartbeat:v1';
-const HEARTBEAT_TITLE = '[cc-heartbeat:v1]';
-const HEARTBEAT_MAX_AGE_MS = 5 * 60 * 1000;
-const STATUS_TITLE = /^\[cc:v1:([a-z_]+)(?::([a-z_]+))?\]\s/;
-const WAITING_PHASES = new Set(['lookup_waiting','company_choice_initial',
-  'company_choice_pending','ready','accepted','kpi_waiting']);
-const RUNNING_PHASES = new Set(['running_single','running_four','kpi_running']);
-const FAILURE_TEXT = {model_unavailable:'선택 모델 사용 불가',
-  model_mismatch:'요청 모델과 실제 사용 모델이 달라 중단',
-  cli_unavailable:'PC 모델 로그인·설치 확인 필요',
-  source_unavailable:'공식 자료 또는 설정 확인 필요',
-  job_failed:'PC 작업 실패 · 로컬 로그 확인 필요'};
-function heartbeatStatus(issues, allowedUserId, nowMs) {
-  const candidates = issues.filter(issue => issue && !issue.pull_request &&
-    issue.state === 'open' && issue.user?.id === allowedUserId &&
-    issue.title === HEARTBEAT_TITLE && typeof issue.body === 'string');
-  let latest = null;
-  for (const issue of candidates) {
-    const body = issue.body.replace(/\r\n/g, '\n');
-    const match = /^concall-relay-heartbeat:v1\nstatus: connected\nobserved_at: (\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ)\n?$/.exec(body);
-    if (!match) continue;
-    const time = Date.parse(match[1]);
-    if (!Number.isFinite(time) || time > nowMs + 60000) continue;
-    if (latest === null || time > latest) {
-      latest = time;
+  <header>
+    <div><h1>���ݺ� ��Ȳ</h1><p class="muted">�۾� ��û�� ���� �ڷ��׷� �Ǵ� �� PC ��Ʈ�ѷ����� �մϴ�. �� ȭ���� ��ȸ �����Դϴ�.</p></div>
+    <span id="connection" class="badge" role="status">���� Ȯ�� ��</span>
+  </header>
+  <main>
+    <section class="panel" aria-labelledby="progress-heading">
+      <h2 id="progress-heading">����������</h2>
+      <p id="freshness" class="muted">������ Ȯ�� �ð��� �д� ���Դϴ�.</p>
+      <div class="summary"><div class="metric">���� ��<strong id="running">?</strong></div><div class="metric">��� ��<strong id="queued">?</strong></div></div>
+      <div id="jobs" class="empty" style="margin-top:14px">���¸� Ȯ���ϴ� ���Դϴ�.</div>
+    </section>
+    <section class="panel" aria-labelledby="model-heading">
+      <h2 id="model-heading">�� �۾��� ����� �� ����</h2>
+      <p class="muted">�̹� ������ �۾��� ���� ���� ��� �������� �����˴ϴ�. �Ʒ� ������ ���� �� �۾��� ���� ���� ���� ������ �ʽ��ϴ�.</p>
+      <div id="models" class="empty">����� ������ Ȯ���ϴ� ���Դϴ�.</div>
+    </section>
+  </main>
+  <script>
+    "use strict";
+    const ISSUE = "https://api.github.com/repos/crhipse/concallbot-remote/issues/2";
+    const STAGES = [
+      ["correct", "����"], ["verify", "��������"], ["summary", "���"],
+      ["inference", "�߷�"], ["source_note", "�ڷ��Ʈ"], ["analysis", "����м�"],
+      ["explainer", "�ؼ�"], ["charts", "��Ʈ"]
+    ];
+    const el = id => document.getElementById(id);
+    function reset(reason) {
+      el("connection").textContent = reason;
+      el("connection").className = "badge stale";
+      el("running").textContent = "?";
+      el("queued").textContent = "?";
+      el("jobs").textContent = "���� �۾� ��Ȳ�� Ȯ���� �� �����ϴ�.";
+      el("models").textContent = "���� ����� �� ������ Ȯ���� �� �����ϴ�.";
     }
-  }
-  const fresh = latest !== null && nowMs - latest <= HEARTBEAT_MAX_AGE_MS;
-  return {fresh, observedAt: latest};
-}
-function publicIssueState(issue, heartbeatFresh) {
-  const match = STATUS_TITLE.exec(issue.title || '');
-  const phase = match?.[1];
-  if (phase === 'manual_review') return 'PC 접수 결과 수동 확인 필요 · 자동 재시도 중단';
-  if (phase === 'completed' && issue.state === 'closed') return '완료';
-  if (phase === 'failed' && issue.state === 'closed')
-    return `실패 · ${FAILURE_TEXT[match[2]] || FAILURE_TEXT.job_failed}`;
-  if (phase === 'kpi_blocked' && issue.state === 'closed') return 'KPI 기능 준비 중';
-  if (phase === 'kpi_local_ready' && issue.state === 'closed')
-    return 'PC 검증본 생성 · 전달 대기';
-  if (phase === 'kpi_partial' && issue.state === 'closed')
-    return '자료 부족 · 검토 필요';
-  if (phase === 'uncertain') return '연결 불명';
-  if (heartbeatFresh && issue.state === 'open') {
-    if (RUNNING_PHASES.has(phase)) return '실행 중';
-    if (WAITING_PHASES.has(phase)) return '대기';
-    if (!phase) return '접수 대기 · 중계 수신 미확인';
-  }
-  return '연결 불명';
-}
-function primaryRequest(issue) {
-  if (!issue || issue.pull_request || issue.user?.id !== ALLOWED_USER_ID ||
-      !Number.isSafeInteger(issue.number) || issue.number <= 0 ||
-      typeof issue.body !== 'string' || !issue.body.startsWith(MARKER + '\n')) return null;
-  const action = /^action: (lookup|kpi_start)$/m.exec(issue.body)?.[1];
-  const query = /^query: ([^\r\n]{1,80})$/m.exec(issue.body)?.[1];
-  return action && query && COMPANY_QUERY_RE.test(query) &&
-    !SENSITIVE_QUERY.test(query) ? {action, query} : null;
-}
-/* STATUS_CONTRACT_END */
-/* MODEL_CATALOG_START */
-const MODEL_CATALOG_MARKER = 'concall-model-catalog:v1';
-const MODEL_CATALOG_TITLE = '[cc-model-catalog:v1]';
-const MODEL_CATALOG_SOURCES = ['https://developers.openai.com/api/docs/models.md',
-  'https://platform.claude.com/docs/en/models/overview.md'];
-const MODEL_CATALOG_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000;
-const MODEL_ID = /^[a-z][a-z0-9._-]{2,79}$/;
-function publicModelCatalog(issues, allowedUserId, nowMs) {
-  for (const issue of issues) {
-    if (!issue || issue.pull_request || issue.state !== 'open' ||
-        issue.title !== MODEL_CATALOG_TITLE ||
-        issue.user?.id !== allowedUserId || typeof issue.body !== 'string' ||
-        !issue.body.startsWith(MODEL_CATALOG_MARKER + '\n')) continue;
-    let data;
-    try { data = JSON.parse(issue.body.slice(MODEL_CATALOG_MARKER.length + 1)); }
-    catch (_) { continue; }
-    const checkedAt = Date.parse(data?.checked_at_utc);
-    if (data?.schema !== 1 || !Number.isFinite(checkedAt) ||
-        checkedAt > nowMs + 60000 || nowMs - checkedAt > MODEL_CATALOG_MAX_AGE_MS ||
-        !Array.isArray(data.sources) || data.sources.length !== 2 ||
-        !MODEL_CATALOG_SOURCES.every(url => data.sources.includes(url)) ||
-        !Array.isArray(data.models) || data.models.length < 4 || data.models.length > 60) continue;
-    const choices = {chatgpt: [], claude: []};
-    let valid = true;
-    for (const item of data.models) {
-      const provider = item?.provider, id = item?.id;
-      if (!Object.hasOwn(choices, provider) || typeof id !== 'string' ||
-          !MODEL_ID.test(id) || !id.startsWith(provider === 'chatgpt' ? 'gpt-' : 'claude-') ||
-          choices[provider].includes(id)) { valid = false; break; }
-      choices[provider].push(id);
+    function parse(body) {
+      if (typeof body !== "string" || !body.startsWith("concall-relay-heartbeat:v1\n")) throw Error("marker");
+      const lines = body.split("\n");
+      const stamp = lines.find(x => x.startsWith("observed_at: "))?.slice(13);
+      const summary = lines.find(x => x.startsWith("summary: "))?.slice(9);
+      if (!stamp || !summary) throw Error("missing");
+      const time = Date.parse(stamp);
+      if (!Number.isFinite(time)) throw Error("timestamp");
+      const value = JSON.parse(summary);
+      if (value.version !== 1 || !Number.isInteger(value.running) || !Number.isInteger(value.queued) || !Array.isArray(value.jobs)) throw Error("summary");
+      return {time, value};
     }
-    if (valid && choices.chatgpt.length && choices.claude.length)
-      return {choices, checkedAt};
-  }
-  return null;
-}
-/* MODEL_CATALOG_END */
-const company = document.getElementById('company');
-const cards = document.getElementById('cards');
-const connection = document.getElementById('connection');
-const workflowSelect = document.getElementById('workflow');
-const providerSelect = document.getElementById('provider');
-const settingsGrid = document.getElementById('stage-settings');
-const modelStatus = document.getElementById('model-status');
-const STAGES = {
-  concall: [['correct','교정'],['verify','검증교정'],['summary','요약'],
-    ['inference','추론'],['source_note','자료노트'],['analysis','기업분석'],
-    ['explainer','해설'],['charts','차트']],
-  kpi: [['proposal','구조 초안'],['finalize','구조 확정'],['extract','자료 기입'],
-    ['verify_extract','독립 검증'],['resolve','불일치 해소']]
-};
-const HISTORICALLY_TESTED_MODELS = {
-  chatgpt: ['gpt-6.1-sol','gpt-6.1-terra'],
-  claude: ['claude-opus-5-5','claude-sonnet-5-5']
-};
-let modelCatalog = null;
-function modelChoices(provider) {
-  return modelCatalog?.choices[provider] || HISTORICALLY_TESTED_MODELS[provider];
-}
-const EFFORTS = ['low','medium','high','xhigh','max'];
-const STORAGE_KEY = 'concall-control-model-profiles-v1';
-function defaults(workflow, provider) {
-  const low = provider === 'chatgpt' ? 'gpt-6.1-terra' : 'claude-sonnet-5-5';
-  const high = provider === 'chatgpt' ? 'gpt-6.1-sol' : 'claude-opus-5-5';
-  const stages = {};
-  for (const [stage] of STAGES[workflow]) {
-    const lesser = workflow === 'concall'
-      ? ['correct','verify','summary'].includes(stage)
-      : ['extract','verify_extract'].includes(stage);
-    stages[stage] = {model: lesser ? low : high,
-      effort: workflow === 'concall' && lesser ? 'high' : 'xhigh'};
-  }
-  return {provider, stages};
-}
-let savedProfiles = {};
-try { savedProfiles = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-catch (_) { savedProfiles = {}; }
-if (!savedProfiles || typeof savedProfiles !== 'object' || Array.isArray(savedProfiles)) savedProfiles = {};
-function profileKey(workflow, provider) { return `${workflow}:${provider}`; }
-function currentProfile() {
-  const workflow = workflowSelect.value, provider = providerSelect.value;
-  const key = profileKey(workflow, provider);
-  if (!savedProfiles[key]) savedProfiles[key] = defaults(workflow, provider);
-  return savedProfiles[key];
-}
-function persistProfiles() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(savedProfiles)); }
-  catch (_) { modelStatus.textContent = '브라우저에 설정을 저장할 수 없습니다. 현재 탭에서는 사용할 수 있습니다.'; }
-}
-function validProfile(workflow, provider, profile) {
-  return profile && profile.provider === provider && profile.stages &&
-    Object.keys(profile.stages).length === STAGES[workflow].length &&
-    STAGES[workflow].every(([stage]) =>
-      modelChoices(provider).includes(profile.stages[stage]?.model) &&
-      EFFORTS.includes(profile.stages[stage]?.effort));
-}
-function renderSettings() {
-  const workflow = workflowSelect.value, provider = providerSelect.value;
-  const profile = currentProfile();
-  settingsGrid.replaceChildren();
-  for (const [stage, label] of STAGES[workflow]) {
-    const title = document.createElement('div');
-    title.className = 'stage-label';
-    title.textContent = label;
-    const model = document.createElement('select');
-    model.setAttribute('aria-label', `${label} 모델`);
-    const selected = profile.stages?.[stage]?.model;
-    const choices = modelChoices(provider);
-    for (const id of [...new Set([...choices, selected].filter(Boolean))]) {
-      const option = document.createElement('option');
-      option.value = id;
-      option.textContent = choices.includes(id)
-        ? `${id} (${HISTORICALLY_TESTED_MODELS[provider].includes(id)
-            ? 'CLI 과거 확인' : '공식 목록 · PC 사용 미확인'})`
-        : `${id} (현재 목록에 없음 · 변경 필요)`;
-      option.disabled = !choices.includes(id);
-      model.append(option);
+    function show(parsed) {
+      const age = Date.now() - parsed.time;
+      el("freshness").textContent = "�� PC ������ Ȯ��: " + new Date(parsed.time).toLocaleString("ko-KR");
+      if (age < -60000 || age > 300000) { reset("���� �Ҹ� �� ���� ������"); return; }
+      el("connection").textContent = "�� PC ���� Ȯ��";
+      el("connection").className = "badge live";
+      const data = parsed.value;
+      el("running").textContent = String(data.running);
+      el("queued").textContent = String(data.queued);
+      const jobs = el("jobs");
+      jobs.replaceChildren();
+      if (!data.jobs.length) {
+        jobs.textContent = "���� �Ǵ� ��� ���� ���� �۾��� �����ϴ�.";
+      } else {
+        const labels = {queued:"���",running:"���� ��",preparing:"�ڷ� �غ�",waiting:"���",high_queued:"�ļ� �ܰ� ���",high_running:"�ļ� �ܰ� ���� ��"};
+        for (const job of data.jobs.slice(0,30)) {
+          const row = document.createElement("p");
+          row.textContent = (job.ticker || "ȸ�� Ȯ�� ��") + " �� " + (labels[job.state] || "���� Ȯ�� ��");
+          jobs.append(row);
+        }
+      }
+      const models = el("models");
+      models.replaceChildren();
+      const selection = data.selection || {};
+      if (selection.kind === "stage_defaults" && selection.stages) {
+        const heading = document.createElement("p");
+        heading.textContent = "���õ� ������: " + (selection.provider === "claude" ? "Claude" : "ChatGPT");
+        models.append(heading);
+        const wrap = document.createElement("div"); wrap.className = "table-wrap";
+        const table = document.createElement("table");
+        const head = document.createElement("tr");
+        for (const value of ["�ܰ�", "��", "�߷� ����"]) { const cell=document.createElement("th"); cell.textContent=value; head.append(cell); }
+        table.append(head);
+        for (const [key,label] of STAGES) {
+          const choice = selection.stages[key] || {};
+          const row = document.createElement("tr");
+          for (const value of [label, choice.model || "Ȯ�� �Ұ�", choice.effort || "Ȯ�� �Ұ�"]) {
+            const cell=document.createElement("td"); cell.textContent=value; row.append(cell);
+          }
+          table.append(row);
+        }
+        wrap.append(table); models.append(wrap);
+      } else if (selection.kind === "legacy_global") {
+        models.textContent = "�ܰ躰 �⺻�� �̼��� �� ���� ���� ����: " + selection.provider + " / " + selection.model + " / " + selection.effort;
+      } else {
+        models.textContent = "����� �� ������ Ȯ���� �� �����ϴ�.";
+      }
     }
-    model.value = selected || '';
-    const effort = document.createElement('select');
-    effort.setAttribute('aria-label', `${label} 추론 강도`);
-    for (const id of EFFORTS) {
-      const option = document.createElement('option');
-      option.value = id; option.textContent = id;
-      effort.append(option);
+    async function refresh() {
+      try {
+        const response = await fetch(ISSUE, {headers:{Accept:"application/vnd.github+json"},cache:"no-store"});
+        if (!response.ok) throw Error("api");
+        const issue = await response.json();
+        if (issue.state !== "open" || issue.title !== "[cc-heartbeat:v1]") throw Error("issue");
+        show(parse(issue.body));
+      } catch (_) {
+        reset("���� �Ҹ� �� ���� Ȯ�� ����");
+        el("freshness").textContent = "�ֱ� Ȯ�� ������ ������ �� �����ϴ�.";
+      }
     }
-    effort.value = profile.stages?.[stage]?.effort || '';
-    model.addEventListener('change', () => {
-      profile.stages[stage].model = model.value; persistProfiles(); updateModelStatus();
-    });
-    effort.addEventListener('change', () => {
-      profile.stages[stage].effort = effort.value; persistProfiles(); updateModelStatus();
-    });
-    settingsGrid.append(title, model, effort);
-  }
-  updateModelStatus();
-}
-function updateModelStatus() {
-  const workflow = workflowSelect.value, provider = providerSelect.value;
-  const catalogText = modelCatalog
-    ? `공식 모델 목록: ${new Date(modelCatalog.checkedAt).toLocaleDateString('ko-KR')} 확인. `
-    : '공식 모델 목록의 최근 갱신을 확인하지 못했습니다. ';
-  modelStatus.textContent = catalogText + (validProfile(workflow, provider, currentProfile())
-    ? 'PC에서 현재 사용 가능한지는 요청 처리 때 확인합니다. 선택한 모델로만 실행하고 자동 대체하지 않습니다.'
-    : '선택한 모델이 현재 목록에 없어 요청할 수 없습니다. 모델을 직접 선택해 주세요.');
-}
-function encodedProfile(profile) {
-  const bytes = new TextEncoder().encode(JSON.stringify(profile));
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-
-function request(action) {
-  if (action === 'kpi_start' && document.getElementById('kpi').disabled) {
-    modelStatus.textContent = 'KPI 작업은 PC에서 아직 활성화되지 않았습니다.';
-    return;
-  }
-  const query = company.value.trim();
-  if (!COMPANY_QUERY_RE.test(query) || SENSITIVE_QUERY.test(query)) {
-    company.setCustomValidity('회사명 또는 티커만 80자 이내로 입력하세요. 비밀정보와 연락처는 제외하세요.');
-    company.reportValidity();
-    return;
-  }
-  company.setCustomValidity('');
-  const lines = [MARKER, `action: ${action}`, `query: ${query}`];
-  if (action === 'lookup') {
-    const provider = providerSelect.value;
-    const profile = savedProfiles[profileKey('concall', provider)] || defaults('concall', provider);
-    if (!validProfile('concall', provider, profile)) {
-      document.getElementById('settings').open = true;
-      workflowSelect.value = 'concall'; renderSettings();
-      modelStatus.textContent = '모델 설정을 확인한 뒤 다시 요청하세요.';
-      return;
-    }
-    lines.push(`mode: ${document.getElementById('mode').value}`);
-    lines.push(`profile: ${encodedProfile(profile)}`);
-  } else if (action === 'kpi_start') {
-    const provider = providerSelect.value;
-    const profile = savedProfiles[profileKey('kpi', provider)] || defaults('kpi', provider);
-    if (!validProfile('kpi', provider, profile)) {
-      document.getElementById('settings').open = true;
-      workflowSelect.value = 'kpi'; renderSettings();
-      modelStatus.textContent = 'KPI 모델 설정을 확인한 뒤 다시 요청하세요.';
-      return;
-    }
-    lines.push(`profile: ${encodedProfile(profile)}`);
-  }
-  const title = action === 'lookup' ? `컨콜 · ${query}` : `KPI · ${query}`;
-  const url = new URL(`https://github.com/${RELAY_REPO}/issues/new`);
-  url.searchParams.set('title', title);
-  url.searchParams.set('body', lines.join('\n'));
-  location.href = url.href;
-}
-
-function textCard(issue, requestInfo, heartbeatFresh) {
-  const a = document.createElement('a');
-  a.className = 'card';
-  a.href = `https://github.com/${RELAY_REPO}/issues/${issue.number}`;
-  a.rel = 'noopener noreferrer';
-  const strong = document.createElement('strong');
-  strong.textContent = `${requestInfo.action === 'lookup' ? '컨콜' : 'KPI'} · ${requestInfo.query}`;
-  const detail = document.createElement('span');
-  detail.textContent = `#${issue.number} · ${publicIssueState(issue, heartbeatFresh)} · GitHub 갱신 ${new Date(issue.updated_at).toLocaleString('ko-KR')}`;
-  a.append(strong, detail);
-  return a;
-}
-
-async function refresh() {
-  connection.textContent = 'GitHub 현황 확인 중 · PC 연결은 아직 불명';
-  try {
-    const url = `https://api.github.com/repos/${RELAY_REPO}/issues?state=all&sort=updated&direction=desc&per_page=50`;
-    const response = await fetch(url, {headers:{'Accept':'application/vnd.github+json'},cache:'no-store'});
-    if (!response.ok) throw new Error(`GitHub 응답 ${response.status}`);
-    const issues = await response.json();
-    if (!Array.isArray(issues)) throw new Error('Issue 목록 형식 오류');
-    const nextCatalog = publicModelCatalog(issues, ALLOWED_USER_ID, Date.now());
-    if (JSON.stringify(nextCatalog) !== JSON.stringify(modelCatalog)) {
-      modelCatalog = nextCatalog;
-      renderSettings();
-    }
-    const heartbeat = heartbeatStatus(issues, ALLOWED_USER_ID, Date.now());
-    const kpiButton = document.getElementById('kpi');
-    kpiButton.disabled = true;
-    kpiButton.textContent = 'KPI 엑셀 요청 · 준비 중';
-    const requests = issues.map(issue => ({issue, info: primaryRequest(issue)}))
-      .filter(item => item.info).slice(0, 20);
-    cards.replaceChildren(...requests.map(({issue, info}) =>
-      textCard(issue, info, heartbeat.fresh)));
-    if (!cards.children.length) cards.textContent = '표시할 요청이 없습니다.';
-    connection.textContent = heartbeat.fresh
-      ? `PC 중계 연결 확인 · 마지막 신호 ${new Date(heartbeat.observedAt).toLocaleTimeString('ko-KR')}`
-      : 'PC 연결 불명 · 최근 중계 신호가 확인되지 않았습니다.';
-  } catch (error) {
-    const kpiButton = document.getElementById('kpi');
-    kpiButton.disabled = true;
-    kpiButton.textContent = 'KPI 엑셀 요청 · 연결 확인 필요';
-    cards.replaceChildren();
-    cards.textContent = '작업 상태를 확인할 수 없습니다.';
-    connection.textContent = `현황을 불러오지 못했습니다. ${error.message}`;
-  }
-}
-
-document.getElementById('concall').addEventListener('click', () => request('lookup'));
-document.getElementById('kpi').addEventListener('click', () => request('kpi_start'));
-document.getElementById('refresh').addEventListener('click', refresh);
-company.addEventListener('input', () => company.setCustomValidity(''));
-workflowSelect.addEventListener('change', renderSettings);
-providerSelect.addEventListener('change', renderSettings);
-renderSettings();
-refresh();
-setInterval(refresh, 180000);
-</script>
+    refresh();
+    setInterval(refresh, 120000);
+  </script>
 </body>
 </html>
+
