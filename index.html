@@ -91,9 +91,10 @@
         jobs.textContent = "실행 또는 대기 중인 컨콜 작업이 없습니다.";
       } else {
         const labels = {queued:"대기",running:"실행 중",preparing:"자료 준비",waiting:"대기",high_queued:"후속 단계 대기",high_running:"후속 단계 실행 중"};
+        const stages = {collecting:"원문 수집",correcting:"교정",verifying:"검증교정",summarizing:"요약"};
         for (const job of data.jobs.slice(0,30)) {
           const row = document.createElement("p");
-          row.textContent = (job.ticker || "회사 확인 중") + " · " + (labels[job.state] || "상태 확인 중");
+          row.textContent = (job.ticker || "회사 확인 중") + " · " + (labels[job.state] || "상태 확인 중") + (stages[job.stage] ? " · " + stages[job.stage] : "");
           jobs.append(row);
         }
       }
