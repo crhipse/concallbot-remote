@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
-  <title>���ݺ� ��Ȳ</title>
+  <title>컨콜봇 현황</title>
   <style>
     :root { color-scheme: light; font-family: system-ui, "Malgun Gothic", sans-serif; background:#f5f8fc; color:#17253b }
     * { box-sizing:border-box }
@@ -31,38 +31,38 @@
 </head>
 <body>
   <header>
-    <div><h1>���ݺ� ��Ȳ</h1><p class="muted">�۾� ��û�� ���� �ڷ��׷� �Ǵ� �� PC ��Ʈ�ѷ����� �մϴ�. �� ȭ���� ��ȸ �����Դϴ�.</p></div>
-    <span id="connection" class="badge" role="status">���� Ȯ�� ��</span>
+    <div><h1>컨콜봇 현황</h1><p class="muted">작업 요청은 기존 텔레그램 또는 집 PC 컨트롤러에서 합니다. 이 화면은 조회 전용입니다.</p></div>
+    <span id="connection" class="badge" role="status">연결 확인 중</span>
   </header>
   <main>
     <section class="panel" aria-labelledby="progress-heading">
-      <h2 id="progress-heading">����������</h2>
-      <p id="freshness" class="muted">������ Ȯ�� �ð��� �д� ���Դϴ�.</p>
-      <div class="summary"><div class="metric">���� ��<strong id="running">?</strong></div><div class="metric">��� ��<strong id="queued">?</strong></div></div>
-      <div id="jobs" class="empty" style="margin-top:14px">���¸� Ȯ���ϴ� ���Դϴ�.</div>
+      <h2 id="progress-heading">파이프라인</h2>
+      <p id="freshness" class="muted">마지막 확인 시각을 읽는 중입니다.</p>
+      <div class="summary"><div class="metric">실행 중<strong id="running">—</strong></div><div class="metric">대기 중<strong id="queued">—</strong></div></div>
+      <div id="jobs" class="empty" style="margin-top:14px">상태를 확인하는 중입니다.</div>
     </section>
     <section class="panel" aria-labelledby="model-heading">
-      <h2 id="model-heading">�� �۾��� ����� �� ����</h2>
-      <p class="muted">�̹� ������ �۾��� ���� ���� ��� �������� �����˴ϴ�. �Ʒ� ������ ���� �� �۾��� ���� ���� ���� ������ �ʽ��ϴ�.</p>
-      <div id="models" class="empty">����� ������ Ȯ���ϴ� ���Դϴ�.</div>
+      <h2 id="model-heading">새 작업에 저장된 모델 설정</h2>
+      <p class="muted">이미 접수된 작업의 모델은 접수 당시 설정으로 고정됩니다. 아래 설정은 진행 중 작업의 실제 실행 모델을 뜻하지 않습니다.</p>
+      <div id="models" class="empty">저장된 설정을 확인하는 중입니다.</div>
     </section>
   </main>
   <script>
     "use strict";
     const ISSUE = "https://api.github.com/repos/crhipse/concallbot-remote/issues/2";
     const STAGES = [
-      ["correct", "����"], ["verify", "��������"], ["summary", "���"],
-      ["inference", "�߷�"], ["source_note", "�ڷ��Ʈ"], ["analysis", "����м�"],
-      ["explainer", "�ؼ�"], ["charts", "��Ʈ"]
+      ["correct", "교정"], ["verify", "검증교정"], ["summary", "요약"],
+      ["inference", "추론"], ["source_note", "자료노트"], ["analysis", "기업분석"],
+      ["explainer", "해설"], ["charts", "차트"]
     ];
     const el = id => document.getElementById(id);
     function reset(reason) {
       el("connection").textContent = reason;
       el("connection").className = "badge stale";
-      el("running").textContent = "?";
-      el("queued").textContent = "?";
-      el("jobs").textContent = "���� �۾� ��Ȳ�� Ȯ���� �� �����ϴ�.";
-      el("models").textContent = "���� ����� �� ������ Ȯ���� �� �����ϴ�.";
+      el("running").textContent = "—";
+      el("queued").textContent = "—";
+      el("jobs").textContent = "현재 작업 현황을 확인할 수 없습니다.";
+      el("models").textContent = "현재 저장된 모델 설정을 확인할 수 없습니다.";
     }
     function parse(body) {
       if (typeof body !== "string" || !body.startsWith("concall-relay-heartbeat:v1\n")) throw Error("marker");
@@ -78,9 +78,9 @@
     }
     function show(parsed) {
       const age = Date.now() - parsed.time;
-      el("freshness").textContent = "�� PC ������ Ȯ��: " + new Date(parsed.time).toLocaleString("ko-KR");
-      if (age < -60000 || age > 300000) { reset("���� �Ҹ� �� ���� ������"); return; }
-      el("connection").textContent = "�� PC ���� Ȯ��";
+      el("freshness").textContent = "집 PC 마지막 확인: " + new Date(parsed.time).toLocaleString("ko-KR");
+      if (age < -60000 || age > 300000) { reset("연결 불명 · 상태 오래됨"); return; }
+      el("connection").textContent = "집 PC 연결 확인";
       el("connection").className = "badge live";
       const data = parsed.value;
       el("running").textContent = String(data.running);
@@ -88,12 +88,12 @@
       const jobs = el("jobs");
       jobs.replaceChildren();
       if (!data.jobs.length) {
-        jobs.textContent = "���� �Ǵ� ��� ���� ���� �۾��� �����ϴ�.";
+        jobs.textContent = "실행 또는 대기 중인 컨콜 작업이 없습니다.";
       } else {
-        const labels = {queued:"���",running:"���� ��",preparing:"�ڷ� �غ�",waiting:"���",high_queued:"�ļ� �ܰ� ���",high_running:"�ļ� �ܰ� ���� ��"};
+        const labels = {queued:"대기",running:"실행 중",preparing:"자료 준비",waiting:"대기",high_queued:"후속 단계 대기",high_running:"후속 단계 실행 중"};
         for (const job of data.jobs.slice(0,30)) {
           const row = document.createElement("p");
-          row.textContent = (job.ticker || "ȸ�� Ȯ�� ��") + " �� " + (labels[job.state] || "���� Ȯ�� ��");
+          row.textContent = (job.ticker || "회사 확인 중") + " · " + (labels[job.state] || "상태 확인 중");
           jobs.append(row);
         }
       }
@@ -102,26 +102,26 @@
       const selection = data.selection || {};
       if (selection.kind === "stage_defaults" && selection.stages) {
         const heading = document.createElement("p");
-        heading.textContent = "���õ� ������: " + (selection.provider === "claude" ? "Claude" : "ChatGPT");
+        heading.textContent = "선택된 제공자: " + (selection.provider === "claude" ? "Claude" : "ChatGPT");
         models.append(heading);
         const wrap = document.createElement("div"); wrap.className = "table-wrap";
         const table = document.createElement("table");
         const head = document.createElement("tr");
-        for (const value of ["�ܰ�", "��", "�߷� ����"]) { const cell=document.createElement("th"); cell.textContent=value; head.append(cell); }
+        for (const value of ["단계", "모델", "추론 강도"]) { const cell=document.createElement("th"); cell.textContent=value; head.append(cell); }
         table.append(head);
         for (const [key,label] of STAGES) {
           const choice = selection.stages[key] || {};
           const row = document.createElement("tr");
-          for (const value of [label, choice.model || "Ȯ�� �Ұ�", choice.effort || "Ȯ�� �Ұ�"]) {
+          for (const value of [label, choice.model || "확인 불가", choice.effort || "확인 불가"]) {
             const cell=document.createElement("td"); cell.textContent=value; row.append(cell);
           }
           table.append(row);
         }
         wrap.append(table); models.append(wrap);
       } else if (selection.kind === "legacy_global") {
-        models.textContent = "�ܰ躰 �⺻�� �̼��� �� ���� ���� ����: " + selection.provider + " / " + selection.model + " / " + selection.effort;
+        models.textContent = "단계별 기본값 미설정 · 현재 전역 설정: " + selection.provider + " / " + selection.model + " / " + selection.effort;
       } else {
-        models.textContent = "����� �� ������ Ȯ���� �� �����ϴ�.";
+        models.textContent = "저장된 모델 설정을 확인할 수 없습니다.";
       }
     }
     async function refresh() {
@@ -132,8 +132,8 @@
         if (issue.state !== "open" || issue.title !== "[cc-heartbeat:v1]") throw Error("issue");
         show(parse(issue.body));
       } catch (_) {
-        reset("���� �Ҹ� �� ���� Ȯ�� ����");
-        el("freshness").textContent = "�ֱ� Ȯ�� ������ ������ �� �����ϴ�.";
+        reset("연결 불명 · 상태 확인 실패");
+        el("freshness").textContent = "최근 확인 정보를 가져올 수 없습니다.";
       }
     }
     refresh();
@@ -141,4 +141,3 @@
   </script>
 </body>
 </html>
-
